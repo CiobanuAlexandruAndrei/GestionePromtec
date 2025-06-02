@@ -1,0 +1,66 @@
+services:
+  backend:
+    build:
+      context: ./promtec-backend
+      dockerfile: Dockerfile
+    ports:
+      - 5001:5000
+    env_file:
+      - ./promtec-backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - api_bridge
+    restart: always
+
+  db:
+    build:
+      context: ./promtec-db
+      dockerfile: Dockerfile
+    ports:
+      - "3307:3306"
+    env_file:
+      - ./promtec-db/.env
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - api_bridge
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./promtec-frontend
+      dockerfile: Dockerfile
+    ports:
+      - 3007:80
+    env_file:
+      - ./promtec-frontend/.env
+    networks:
+      - api_bridge
+
+  nginx:
+    build:
+      context: ./promtec-nginx
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - api_bridge
+
+networks:
+  api_bridge:
+    driver: bridge
+
+volumes:
+  mysql_data:
